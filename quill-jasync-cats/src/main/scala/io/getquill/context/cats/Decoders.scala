@@ -1,4 +1,4 @@
-package io.getquill.context.zio
+package io.getquill.context.cats
 
 import com.github.jasync.sql.db.RowData
 import io.getquill.context.Context
@@ -10,7 +10,7 @@ import java.util.Date
 import scala.reflect.{ClassTag, classTag}
 
 trait Decoders {
-  this: ZioJAsyncContext[_, _, _] =>
+  this: CatsJAsyncContext[_, _, _] =>
 
   type Decoder[T] = AsyncDecoder[T]
 

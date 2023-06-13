@@ -1,9 +1,9 @@
-package io.getquill.context.zio
+package io.getquill.context.cats
 
 import java.util.UUID
 
 trait UUIDObjectEncoding {
-  this: ZioJAsyncContext[_, _, _] =>
+  this: CatsJAsyncContext[_, _, _] =>
 
   implicit val uuidEncoder: Encoder[UUID] = encoder[UUID](SqlTypes.UUID)
 

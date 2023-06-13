@@ -1,4 +1,4 @@
-package io.getquill.context.zio
+package io.getquill.context.cats
 
 object SqlTypes extends Enumeration {
   type SqlTypes = Value

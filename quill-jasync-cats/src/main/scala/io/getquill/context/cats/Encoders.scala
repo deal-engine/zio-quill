@@ -1,4 +1,4 @@
-package io.getquill.context.zio
+package io.getquill.context.cats
 
 import com.github.jasync.sql.db.RowData
 import io.getquill.context.Context
@@ -7,7 +7,7 @@ import java.time._
 import java.util.Date
 
 trait Encoders {
-  this: ZioJAsyncContext[_, _, _] =>
+  this: CatsJAsyncContext[_, _, _] =>
 
   type Encoder[T] = AsyncEncoder[T]
 

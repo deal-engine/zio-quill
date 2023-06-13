@@ -1,38 +1,42 @@
-package io.getquill.context.zio
+package io.getquill.context.cats
 
-import com.github.jasync.sql.db.{ConcreteConnection, QueryResult, RowData}
+import com.github.jasync.sql.db.{ConcreteConnection, Connection, QueryResult, RowData}
+import com.github.jasync.sql.db.pool.ConnectionPool
+
 import io.getquill.context.sql.SqlContext
 import io.getquill.context.sql.idiom.SqlIdiom
 import io.getquill.context.{Context, ContextVerbTranslate, ExecutionInfo}
 import io.getquill.util.ContextLogger
 import io.getquill.{NamingStrategy, ReturnAction}
 import kotlin.jvm.functions.Function1
-import zio.{RIO, ZIO}
+import scala.concurrent.ExecutionContext
+import cats.effect.{IO => CatsIO}
 
 import java.time.ZoneId
 import scala.jdk.CollectionConverters._
 import scala.language.implicitConversions
 import scala.util.Try
 
-abstract class ZioJAsyncContext[D <: SqlIdiom, +N <: NamingStrategy, C <: ConcreteConnection](
+abstract class CatsJAsyncContext[D <: SqlIdiom, +N <: NamingStrategy, C <: ConcreteConnection](
   val idiom: D,
-  val naming: N
+  val naming: N,
+  pool: ConnectionPool[C]
 ) extends Context[D, N]
     with ContextVerbTranslate
     with SqlContext[D, N]
     with Decoders
     with Encoders
-    with ZIOMonad {
+    with CatsIOMonad {
 
   protected val dateTimeZone = ZoneId.systemDefault()
 
-  private val logger = ContextLogger(classOf[ZioJAsyncContext[_, _, _]])
+  private val logger = ContextLogger(classOf[CatsJAsyncContext[_, _, _]])
 
   override type PrepareRow = Seq[Any]
   override type ResultRow  = RowData
   override type Session    = Unit
 
-  override type Result[T]                        = RIO[ZioJAsyncConnection, T]
+  override type Result[T]                        = CatsIO[T]
   override type RunQueryResult[T]                = Seq[T]
   override type RunQuerySingleResult[T]          = T
   override type RunActionResult                  = Long
@@ -42,48 +46,56 @@ abstract class ZioJAsyncContext[D <: SqlIdiom, +N <: NamingStrategy, C <: Concre
   override type DecoderSqlType                   = SqlTypes.SqlTypes
   type DatasourceContext                         = Unit
 
-  override type NullChecker = ZioJasyncNullChecker
-  class ZioJasyncNullChecker extends BaseNullChecker {
+  override type NullChecker = CatsJasyncNullChecker
+  class CatsJasyncNullChecker extends BaseNullChecker {
     override def apply(index: Int, row: RowData): Boolean =
       row.get(index) == null
   }
-  implicit val nullChecker: NullChecker = new ZioJasyncNullChecker()
+  implicit val nullChecker: NullChecker = new CatsJasyncNullChecker()
 
   implicit def toKotlinFunction[T, R](f: T => R): Function1[T, R] = new Function1[T, R] {
     override def invoke(t: T): R = f(t)
   }
 
-  override def close: Unit =
-    // nothing to close since pool is in env
+  override def close =
+    // Await.result(pool.disconnect(), Duration.Inf) // TO CHANGE
     ()
+
+  protected def withConnection[T](f: Connection => CatsIO[T])(implicit currentConnection: Option[Connection] = None) =
+    currentConnection match {
+      case Some(conn) => f(conn)
+      case None       => f(pool)
+    }
 
   protected def extractActionResult[O](returningAction: ReturnAction, extractor: Extractor[O])(
     result: QueryResult
   ): List[O]
 
-  protected def expandAction(sql: String, returningAction: ReturnAction): String = sql
+  protected def expandAction(sql: String, returningAction: ReturnAction) = sql
 
   def probe(sql: String): Try[_] =
-    Try(()) // need to address that
+    Try {
+      // Await.result(pool.sendQuery(sql), Duration.Inf) TODO
+    }
 
-  def transaction[R <: ZioJAsyncConnection, T](action: RIO[R, T]): RIO[R, T] =
-    ZIO.environmentWithZIO[ZioJAsyncConnection](_.get.transaction(action))
-
-  override def performIO[T](io: IO[T, _], transactional: Boolean = false): RIO[ZioJAsyncConnection, T] =
-    if (transactional) {
-      transaction(super.performIO(io))
-    } else {
-      super.performIO(io)
+  def transaction[T](f: Option[Connection] => CatsIO[T]) =
+    cats.effect.std.Dispatcher.parallel[CatsIO].use { dispatcher =>
+      CatsIO.fromCompletableFuture {
+        CatsIO {
+          pool.inTransaction({ c: Connection =>
+            dispatcher.unsafeToCompletableFuture(f(Some(c)))
+          })
+        }
+      }
     }
 
   def executeQuery[T](sql: String, prepare: Prepare = identityPrepare, extractor: Extractor[T] = identityExtractor)(
     info: ExecutionInfo,
-    dc: DatasourceContext
-  ): RIO[ZioJAsyncConnection, List[T]] = {
+    dc: Runner
+  ): CatsIO[List[T]] = {
     val (params, values) = prepare(Nil, ())
     logger.logQuery(sql, params)
-    ZioJAsyncConnection
-      .sendPreparedStatement(sql, values)
+    withConnection(a => CatsIO.fromCompletableFuture(CatsIO(a.sendPreparedStatement(sql, values.asJava))))
       .map(_.getRows.asScala.iterator.map(row => extractor(row, ())).toList)
   }
 
@@ -91,16 +103,14 @@ abstract class ZioJAsyncContext[D <: SqlIdiom, +N <: NamingStrategy, C <: Concre
     sql: String,
     prepare: Prepare = identityPrepare,
     extractor: Extractor[T] = identityExtractor
-  )(info: ExecutionInfo, dc: DatasourceContext): RIO[ZioJAsyncConnection, T] =
+  )(info: ExecutionInfo, dc: Runner): CatsIO[T] =
     executeQuery(sql, prepare, extractor)(info, dc).map(handleSingleResult(sql, _))
 
-  def executeAction[T](
-    sql: String,
-    prepare: Prepare = identityPrepare
-  )(info: ExecutionInfo, dc: DatasourceContext): Result[Long] = {
+  def executeAction(sql: String, prepare: Prepare = identityPrepare)(info: ExecutionInfo, dc: Runner): CatsIO[Long] = {
     val (params, values) = prepare(Nil, ())
     logger.logQuery(sql, params)
-    ZioJAsyncConnection.sendPreparedStatement(sql, values).map(_.getRowsAffected)
+    withConnection(a => CatsIO.fromCompletableFuture(CatsIO(a.sendPreparedStatement(sql, values.asJava))))
+      .map(_.getRowsAffected)
   }
 
   def executeActionReturning[T](
@@ -108,7 +118,7 @@ abstract class ZioJAsyncContext[D <: SqlIdiom, +N <: NamingStrategy, C <: Concre
     prepare: Prepare = identityPrepare,
     extractor: Extractor[T],
     returningAction: ReturnAction
-  )(info: ExecutionInfo, dc: DatasourceContext): RIO[ZioJAsyncConnection, T] =
+  )(info: ExecutionInfo, dc: Runner): CatsIO[T] =
     executeActionReturningMany[T](sql, prepare, extractor, returningAction)(info, dc).map(handleSingleResult(sql, _))
 
   def executeActionReturningMany[T](
@@ -116,41 +126,44 @@ abstract class ZioJAsyncContext[D <: SqlIdiom, +N <: NamingStrategy, C <: Concre
     prepare: Prepare = identityPrepare,
     extractor: Extractor[T],
     returningAction: ReturnAction
-  )(info: ExecutionInfo, dc: DatasourceContext): RIO[ZioJAsyncConnection, List[T]] = {
+  )(info: ExecutionInfo, dc: Runner): CatsIO[List[T]] = {
     val expanded         = expandAction(sql, returningAction)
     val (params, values) = prepare(Nil, ())
     logger.logQuery(sql, params)
-    ZioJAsyncConnection
-      .sendPreparedStatement(expanded, values)
+    withConnection(a => CatsIO.fromCompletableFuture(CatsIO(a.sendPreparedStatement(expanded, values.asJava))))
       .map(extractActionResult(returningAction, extractor))
   }
 
   def executeBatchAction(
     groups: List[BatchGroup]
-  )(info: ExecutionInfo, dc: DatasourceContext): RIO[ZioJAsyncConnection, List[Long]] =
-    ZIO
-      .foreach(groups) { group =>
-        ZIO
-          .foldLeft(group.prepare)(List.newBuilder[Long]) { case (acc, prepare) =>
-            executeAction(group.string, prepare)(info, dc).map(acc += _)
+  )(info: ExecutionInfo, dc: Runner): CatsIO[List[Long]] =
+    fs2.Stream.emits {
+      groups.map { case BatchGroup(sql, prepare) =>
+        prepare
+          .foldLeft(CatsIO.pure(List.newBuilder[Long])) { case (acc, prepare) =>
+            acc.flatMap { list =>
+              executeAction(sql, prepare)(info, dc).map(list += _)
+            }
           }
           .map(_.result())
       }
-      .map(_.flatten.toList)
+    }.parEvalMapUnbounded(identity).compile.toList.map(_.flatten)
 
   def executeBatchActionReturning[T](
     groups: List[BatchGroupReturning],
     extractor: Extractor[T]
-  )(info: ExecutionInfo, dc: DatasourceContext): RIO[ZioJAsyncConnection, List[T]] =
-    ZIO
-      .foreach(groups) { case BatchGroupReturning(sql, column, prepare) =>
-        ZIO
-          .foldLeft(prepare)(List.newBuilder[T]) { case (acc, prepare) =>
-            executeActionReturning(sql, prepare, extractor, column)(info, dc).map(acc += _)
+  )(info: ExecutionInfo, dc: Runner): CatsIO[List[T]] =
+    fs2.Stream.emits {
+      groups.map { case BatchGroupReturning(sql, column, prepare) =>
+        prepare
+          .foldLeft(CatsIO.pure(List.newBuilder[T])) { case (acc, prepare) =>
+            acc.flatMap { list =>
+              executeActionReturning(sql, prepare, extractor, column)(info, dc).map(list += _)
+            }
           }
           .map(_.result())
       }
-      .map(_.flatten.toList)
+    }.parEvalMapUnbounded(identity).compile.toList.map(_.flatten)
 
   override private[getquill] def prepareParams(statement: String, prepare: Prepare): Seq[String] =
     prepare(Nil, ())._2.map(prepareParam)
