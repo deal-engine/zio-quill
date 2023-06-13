@@ -12,8 +12,8 @@ class ArrayAsyncEncodingSpec extends ArrayEncodingBaseSpec with CatsSpec {
   val q = quote(query[ArraysTestEntity])
 
   "Support all sql base types and `Iterable` implementers" in {
-    runSyncUnsafe(context.run(q.insertValue(lift(e))))
-    val actual = runSyncUnsafe(context.run(q)).head
+    runSyncUnsafe(implicit ec => context.run(q.insertValue(lift(e))))
+    val actual = runSyncUnsafe(implicit ec => context.run(q)).head
     actual mustEqual e
     baseEntityDeepCheck(actual, e)
   }
@@ -22,22 +22,22 @@ class ArrayAsyncEncodingSpec extends ArrayEncodingBaseSpec with CatsSpec {
     case class Java8Times(timestamps: Seq[LocalDateTime], dates: Seq[LocalDate])
     val jE = Java8Times(Seq(LocalDateTime.now()), Seq(LocalDate.now()))
     val jQ = quote(querySchema[Java8Times]("ArraysTestEntity"))
-    runSyncUnsafe(context.run(jQ.insertValue(lift(jE))))
-    val actual = runSyncUnsafe(context.run(jQ)).head
+    runSyncUnsafe(implicit ec => context.run(jQ.insertValue(lift(jE))))
+    val actual = runSyncUnsafe(implicit ec => context.run(jQ)).head
     actual.timestamps mustBe jE.timestamps
     actual.dates mustBe jE.dates
   }
 
   "Support Iterable encoding basing on MappedEncoding" in {
     val wrapQ = quote(querySchema[WrapEntity]("ArraysTestEntity"))
-    runSyncUnsafe(context.run(wrapQ.insertValue(lift(wrapE))))
-    runSyncUnsafe(context.run(wrapQ)).head mustBe wrapE
+    runSyncUnsafe(implicit ec => context.run(wrapQ.insertValue(lift(wrapE))))
+    runSyncUnsafe(implicit ec => context.run(wrapQ)).head mustBe wrapE
   }
 
   "Arrays in where clause" in {
-    runSyncUnsafe(context.run(q.insertValue(lift(e))))
-    val actual1 = runSyncUnsafe(context.run(q.filter(_.texts == lift(List("test")))))
-    val actual2 = runSyncUnsafe(context.run(q.filter(_.texts == lift(List("test2")))))
+    runSyncUnsafe(implicit ec => context.run(q.insertValue(lift(e))))
+    val actual1 = runSyncUnsafe(implicit ec => context.run(q.filter(_.texts == lift(List("test")))))
+    val actual2 = runSyncUnsafe(implicit ec => context.run(q.filter(_.texts == lift(List("test2")))))
     baseEntityDeepCheck(actual1.head, e)
     actual1 mustEqual List(e)
     actual2 mustEqual List()
@@ -114,14 +114,14 @@ class ArrayAsyncEncodingSpec extends ArrayEncodingBaseSpec with CatsSpec {
     val realEntity = quote {
       querySchema[RealEncodingTestEntity]("EncodingTestEntity")
     }
-    runSyncUnsafe(context.run(realEntity.insertValue(lift(insertValue))))
+    runSyncUnsafe(implicit ec => context.run(realEntity.insertValue(lift(insertValue))))
 
     case class EncodingTestEntity(v1: List[String])
-    intercept[IllegalStateException](runSyncUnsafe(context.run(query[EncodingTestEntity])))
+    intercept[IllegalStateException](runSyncUnsafe(implicit ec => context.run(query[EncodingTestEntity])))
   }
 
   override protected def beforeEach(): Unit = {
-    runSyncUnsafe(context.run(q.delete))
+    runSyncUnsafe(implicit ec => context.run(q.delete))
     ()
   }
 }

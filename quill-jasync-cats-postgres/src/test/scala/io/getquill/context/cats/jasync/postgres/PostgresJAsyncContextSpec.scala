@@ -15,25 +15,29 @@ class PostgresJAsyncContextSpec extends Spec with CatsSpec {
     val insert = quote { (i: Int) =>
       qr1.insert(_.i -> i)
     }
-    runSyncUnsafe(testContext.run(insert(lift(1)))) mustEqual 1
+    runSyncUnsafe(implicit ec => testContext.run(insert(lift(1)))) mustEqual 1
   }
 
   "Insert with returning with single column table" in {
-    val inserted: Long = runSyncUnsafe(testContext.run {
-      qr4.insertValue(lift(TestEntity4(0))).returningGenerated(_.i)
-    })
-    runSyncUnsafe(testContext.run(qr4.filter(_.i == lift(inserted)))).head.i mustBe inserted
+    val inserted: Long = runSyncUnsafe(implicit ec =>
+      testContext.run {
+        qr4.insertValue(lift(TestEntity4(0))).returningGenerated(_.i)
+      }
+    )
+    runSyncUnsafe(implicit ec => testContext.run(qr4.filter(_.i == lift(inserted)))).head.i mustBe inserted
   }
   "Insert with returning with multiple columns" in {
-    runSyncUnsafe(testContext.run(qr1.delete))
-    val inserted = runSyncUnsafe(testContext.run {
-      qr1.insertValue(lift(TestEntity("foo", 1, 18L, Some(123), true))).returning(r => (r.i, r.s, r.o))
-    })
+    runSyncUnsafe(implicit ec => testContext.run(qr1.delete))
+    val inserted = runSyncUnsafe(implicit ec =>
+      testContext.run {
+        qr1.insertValue(lift(TestEntity("foo", 1, 18L, Some(123), true))).returning(r => (r.i, r.s, r.o))
+      }
+    )
     (1, "foo", Some(123)) mustBe inserted
   }
 
   "performIO" in {
-    runSyncUnsafe(performIO(runIO(qr4).transactional))
+    runSyncUnsafe(implicit ec => performIO(runIO(qr4).transactional))
   }
 
   "probe" in {
@@ -67,7 +71,7 @@ class PostgresJAsyncContextSpec extends Spec with CatsSpec {
   }
 
   override protected def beforeAll(): Unit = {
-    runSyncUnsafe(testContext.run(qr1.delete))
+    runSyncUnsafe(implicit ec => testContext.run(qr1.delete))
     ()
   }
 }

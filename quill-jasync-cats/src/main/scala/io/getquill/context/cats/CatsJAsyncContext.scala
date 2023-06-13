@@ -11,6 +11,8 @@ import io.getquill.{NamingStrategy, ReturnAction}
 import kotlin.jvm.functions.Function1
 import scala.concurrent.ExecutionContext
 import cats.effect.{IO => CatsIO}
+import cats.effect.std.AtomicCell
+import scala.concurrent.ExecutionContext
 
 import java.time.ZoneId
 import scala.jdk.CollectionConverters._
@@ -62,10 +64,10 @@ abstract class CatsJAsyncContext[D <: SqlIdiom, +N <: NamingStrategy, C <: Concr
     // Await.result(pool.disconnect(), Duration.Inf) // TO CHANGE
     ()
 
-  protected def withConnection[T](f: Connection => CatsIO[T])(implicit currentConnection: Option[Connection] = None) =
-    currentConnection match {
-      case Some(conn) => f(conn)
-      case None       => f(pool)
+  protected def withConnection[T](f: Connection => CatsIO[T])(implicit ec: ExecutionContext) =
+    ec match {
+      case TransactionalExecutionContext(ec, conn) => f(conn)
+      case other                                   => f(pool)
     }
 
   protected def extractActionResult[O](returningAction: ReturnAction, extractor: Extractor[O])(
@@ -79,12 +81,12 @@ abstract class CatsJAsyncContext[D <: SqlIdiom, +N <: NamingStrategy, C <: Concr
       // Await.result(pool.sendQuery(sql), Duration.Inf) TODO
     }
 
-  def transaction[T](f: Option[Connection] => CatsIO[T]) =
+  def transaction[T](f: ExecutionContext => CatsIO[T])(implicit ec: ExecutionContext) =
     cats.effect.std.Dispatcher.parallel[CatsIO].use { dispatcher =>
       CatsIO.fromCompletableFuture {
         CatsIO {
           pool.inTransaction({ c: Connection =>
-            dispatcher.unsafeToCompletableFuture(f(Some(c)))
+            dispatcher.unsafeToCompletableFuture(f(TransactionalExecutionContext(ec, c)))
           })
         }
       }
@@ -93,7 +95,7 @@ abstract class CatsJAsyncContext[D <: SqlIdiom, +N <: NamingStrategy, C <: Concr
   def executeQuery[T](sql: String, prepare: Prepare = identityPrepare, extractor: Extractor[T] = identityExtractor)(
     info: ExecutionInfo,
     dc: Runner
-  ): CatsIO[List[T]] = {
+  )(implicit ec: ExecutionContext): CatsIO[List[T]] = {
     val (params, values) = prepare(Nil, ())
     logger.logQuery(sql, params)
     withConnection(a => CatsIO.fromCompletableFuture(CatsIO(a.sendPreparedStatement(sql, values.asJava))))
@@ -104,10 +106,12 @@ abstract class CatsJAsyncContext[D <: SqlIdiom, +N <: NamingStrategy, C <: Concr
     sql: String,
     prepare: Prepare = identityPrepare,
     extractor: Extractor[T] = identityExtractor
-  )(info: ExecutionInfo, dc: Runner): CatsIO[T] =
+  )(info: ExecutionInfo, dc: Runner)(implicit ec: ExecutionContext): CatsIO[T] =
     executeQuery(sql, prepare, extractor)(info, dc).map(handleSingleResult(sql, _))
 
-  def executeAction(sql: String, prepare: Prepare = identityPrepare)(info: ExecutionInfo, dc: Runner): CatsIO[Long] = {
+  def executeAction(sql: String, prepare: Prepare = identityPrepare)(info: ExecutionInfo, dc: Runner)(implicit
+    ec: ExecutionContext
+  ): CatsIO[Long] = {
     val (params, values) = prepare(Nil, ())
     logger.logQuery(sql, params)
     withConnection(a => CatsIO.fromCompletableFuture(CatsIO(a.sendPreparedStatement(sql, values.asJava))))
@@ -119,7 +123,7 @@ abstract class CatsJAsyncContext[D <: SqlIdiom, +N <: NamingStrategy, C <: Concr
     prepare: Prepare = identityPrepare,
     extractor: Extractor[T],
     returningAction: ReturnAction
-  )(info: ExecutionInfo, dc: Runner): CatsIO[T] =
+  )(info: ExecutionInfo, dc: Runner)(implicit ec: ExecutionContext): CatsIO[T] =
     executeActionReturningMany[T](sql, prepare, extractor, returningAction)(info, dc).map(handleSingleResult(sql, _))
 
   def executeActionReturningMany[T](
@@ -127,7 +131,7 @@ abstract class CatsJAsyncContext[D <: SqlIdiom, +N <: NamingStrategy, C <: Concr
     prepare: Prepare = identityPrepare,
     extractor: Extractor[T],
     returningAction: ReturnAction
-  )(info: ExecutionInfo, dc: Runner): CatsIO[List[T]] = {
+  )(info: ExecutionInfo, dc: Runner)(implicit ec: ExecutionContext): CatsIO[List[T]] = {
     val expanded         = expandAction(sql, returningAction)
     val (params, values) = prepare(Nil, ())
     logger.logQuery(sql, params)
@@ -137,7 +141,7 @@ abstract class CatsJAsyncContext[D <: SqlIdiom, +N <: NamingStrategy, C <: Concr
 
   def executeBatchAction(
     groups: List[BatchGroup]
-  )(info: ExecutionInfo, dc: Runner): CatsIO[List[Long]] =
+  )(info: ExecutionInfo, dc: Runner)(implicit ec: ExecutionContext): CatsIO[List[Long]] =
     fs2.Stream.emits {
       groups.map { case BatchGroup(sql, prepare) =>
         prepare
@@ -153,7 +157,7 @@ abstract class CatsJAsyncContext[D <: SqlIdiom, +N <: NamingStrategy, C <: Concr
   def executeBatchActionReturning[T](
     groups: List[BatchGroupReturning],
     extractor: Extractor[T]
-  )(info: ExecutionInfo, dc: Runner): CatsIO[List[T]] =
+  )(info: ExecutionInfo, dc: Runner)(implicit ec: ExecutionContext): CatsIO[List[T]] =
     fs2.Stream.emits {
       groups.map { case BatchGroupReturning(sql, column, prepare) =>
         prepare

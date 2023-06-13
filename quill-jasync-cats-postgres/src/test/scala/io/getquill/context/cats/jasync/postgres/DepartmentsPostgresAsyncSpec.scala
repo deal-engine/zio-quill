@@ -7,7 +7,7 @@ class DepartmentsPostgresAsyncSpec extends DepartmentsSpec with CatsSpec {
   import context._
 
   override def beforeAll =
-    runSyncUnsafe {
+    runSyncUnsafe { implicit ec =>
       context.transaction { implicit ec =>
         for {
           _ <- context.run(query[Department].delete)
@@ -22,16 +22,18 @@ class DepartmentsPostgresAsyncSpec extends DepartmentsSpec with CatsSpec {
     }
 
   "Example 8 - nested naive" in {
-    runSyncUnsafe(
+    runSyncUnsafe(implicit ec =>
       testContext.run(`Example 8 expertise naive`(lift(`Example 8 param`)))
     ) mustEqual `Example 8 expected result`
   }
 
   "Example 9 - nested db" in {
-    runSyncUnsafe(testContext.run(`Example 9 expertise`(lift(`Example 9 param`)))) mustEqual `Example 9 expected result`
+    runSyncUnsafe(implicit ec =>
+      testContext.run(`Example 9 expertise`(lift(`Example 9 param`)))
+    ) mustEqual `Example 9 expected result`
   }
 
   "performIO" in {
-    runSyncUnsafe(performIO(runIO(query[Task]).transactional))
+    runSyncUnsafe(implicit ec => performIO(runIO(query[Task]).transactional))
   }
 }

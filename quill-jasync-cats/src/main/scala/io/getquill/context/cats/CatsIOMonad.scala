@@ -5,6 +5,7 @@ import com.github.jasync.sql.db.Connection
 import io.getquill.monad.{IOMonad, IOMonadMacro}
 import io.getquill.{Action, ActionReturning, BatchAction, Query, Quoted}
 import cats.effect.{IO => CatsIO}
+import scala.concurrent.ExecutionContext
 
 import scala.collection.compat._
 import scala.language.experimental.macros
@@ -32,7 +33,7 @@ trait CatsIOMonad extends IOMonad {
   case class Run[T, E <: Effect](f: () => Result[T]) extends IO[T, E]
 
   def performIO[T](io: IO[T, _], transactional: Boolean = false)(implicit
-    currentConnection: Option[Connection] = None
+    ec: ExecutionContext
   ): Result[T] =
     io match {
       case FromTry(v) => CatsIO.fromTry(v)

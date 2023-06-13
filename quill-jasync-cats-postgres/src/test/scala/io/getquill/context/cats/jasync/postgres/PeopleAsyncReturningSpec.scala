@@ -7,7 +7,7 @@ class PeopleAsyncReturningSpec extends PeopleReturningSpec with CatsSpec {
   import context._
 
   override def beforeEach(): Unit = {
-    runSyncUnsafe {
+    runSyncUnsafe { implicit ec =>
       testContext.transaction { implicit ec =>
         for {
           _ <- testContext.run(query[Contact].delete)
@@ -21,52 +21,64 @@ class PeopleAsyncReturningSpec extends PeopleReturningSpec with CatsSpec {
 
   "Ex 0 insert.returning(_.generatedColumn) mod" in {
     import `Ex 0 insert.returning(_.generatedColumn) mod`._
-    runSyncUnsafe(for {
-      id     <- testContext.run(op)
-      output <- testContext.run(get)
-    } yield (output.toSet mustEqual result(id).toSet))
+    runSyncUnsafe(implicit ec =>
+      for {
+        id     <- testContext.run(op)
+        output <- testContext.run(get)
+      } yield (output.toSet mustEqual result(id).toSet)
+    )
   }
 
   "Ex 0.5 insert.returning(wholeRecord) mod" in {
     import `Ex 0.5 insert.returning(wholeRecord) mod`._
-    runSyncUnsafe(for {
-      product <- testContext.run(op)
-      output  <- testContext.run(get)
-    } yield (output mustEqual result(product)))
+    runSyncUnsafe(implicit ec =>
+      for {
+        product <- testContext.run(op)
+        output  <- testContext.run(get)
+      } yield (output mustEqual result(product))
+    )
   }
 
   "Ex 1 insert.returningMany(_.generatedColumn) mod" in {
     import `Ex 1 insert.returningMany(_.generatedColumn) mod`._
-    runSyncUnsafe(for {
-      id     <- testContext.run(op)
-      output <- testContext.run(get)
-    } yield (output mustEqual result(id.head)))
+    runSyncUnsafe(implicit ec =>
+      for {
+        id     <- testContext.run(op)
+        output <- testContext.run(get)
+      } yield (output mustEqual result(id.head))
+    )
   }
 
   "Ex 2 update.returningMany(_.singleColumn) mod" in {
     import `Ex 2 update.returningMany(_.singleColumn) mod`._
-    runSyncUnsafe(for {
-      opResult <- testContext.run(op)
-      _         = opResult.toSet mustEqual expect.toSet
-      output   <- testContext.run(get)
-    } yield (output.toSet mustEqual result.toSet))
+    runSyncUnsafe(implicit ec =>
+      for {
+        opResult <- testContext.run(op)
+        _         = opResult.toSet mustEqual expect.toSet
+        output   <- testContext.run(get)
+      } yield (output.toSet mustEqual result.toSet)
+    )
   }
 
   "Ex 3 delete.returningMany(wholeRecord)" in {
     import `Ex 3 delete.returningMany(wholeRecord)`._
-    runSyncUnsafe(for {
-      opResult <- testContext.run(op)
-      _         = opResult.toSet mustEqual expect.toSet
-      output   <- testContext.run(get)
-    } yield (output.toSet mustEqual result.toSet))
+    runSyncUnsafe(implicit ec =>
+      for {
+        opResult <- testContext.run(op)
+        _         = opResult.toSet mustEqual expect.toSet
+        output   <- testContext.run(get)
+      } yield (output.toSet mustEqual result.toSet)
+    )
   }
 
   "Ex 4 update.returningMany(query)" in {
     import `Ex 4 update.returningMany(query)`._
-    runSyncUnsafe(for {
-      opResult <- testContext.run(op)
-      _         = opResult.toSet mustEqual expect.toSet
-      output   <- testContext.run(get)
-    } yield (output.toSet mustEqual result.toSet))
+    runSyncUnsafe(implicit ec =>
+      for {
+        opResult <- testContext.run(op)
+        _         = opResult.toSet mustEqual expect.toSet
+        output   <- testContext.run(get)
+      } yield (output.toSet mustEqual result.toSet)
+    )
   }
 }

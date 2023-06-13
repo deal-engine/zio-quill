@@ -6,6 +6,7 @@ import org.scalatest.BeforeAndAfterAll
 import fs2.Stream
 import cats.effect.unsafe.implicits.global
 import cats.effect.IO
+import scala.concurrent.ExecutionContext
 
 trait CatsSpec extends Spec with BeforeAndAfterAll {
 
@@ -18,8 +19,8 @@ trait CatsSpec extends Spec with BeforeAndAfterAll {
   def collect[T](stream: Stream[IO, T]): List[T] =
     stream.compile.toList.unsafeRunSync()
 
-  def runSyncUnsafe[T](qcats: IO[T]): T =
-    qcats.unsafeRunSync()
+  def runSyncUnsafe[T](qcats: ExecutionContext => IO[T]): T =
+    IO.executionContext.flatMap(ec => qcats(ec)).unsafeRunSync()
 
   implicit class CatsAnyOps[T](qcats: IO[T]) {
     def runSyncUnsafe() =
@@ -31,6 +32,6 @@ trait CatsSpec extends Spec with BeforeAndAfterAll {
   }
 
   implicit class CatsTestExt[T](qcats: IO[T]) {
-    def runSyncUnsafe() = CatsSpec.this.runSyncUnsafe[T](qcats)
+    def runSyncUnsafe() = CatsSpec.this.runSyncUnsafe[T](_ => qcats)
   }
 }
