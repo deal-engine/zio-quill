@@ -56,6 +56,7 @@ lazy val baseModules = Seq[sbt.ClasspathDep[sbt.ProjectReference]](
   `quill-sql-jvm`,
   `quill-monix`,
   `quill-zio`,
+  `quill-cats`,
   `quill-util`
 )
 
@@ -75,7 +76,9 @@ lazy val jasyncModules = Seq[sbt.ClasspathDep[sbt.ProjectReference]](
   `quill-jasync-postgres`,
   `quill-jasync-mysql`,
   `quill-jasync-zio`,
-  `quill-jasync-zio-postgres`
+  `quill-jasync-cats`,
+  `quill-jasync-zio-postgres`,
+  `quill-jasync-cats-postgres`
 )
 
 lazy val codegenModules = Seq[sbt.ClasspathDep[sbt.ProjectReference]](
@@ -107,7 +110,9 @@ lazy val scala213Modules =
     `quill-jasync-postgres`,
     `quill-jasync-mysql`,
     `quill-jasync-zio`,
+    `quill-jasync-cats`,
     `quill-jasync-zio-postgres`,
+    `quill-jasync-cats-postgres`,
     `quill-spark`
   )
 
@@ -483,6 +488,18 @@ lazy val `quill-zio` =
     .dependsOn(`quill-core-jvm` % "compile->compile;test->test")
     .enablePlugins(MimaPlugin)
 
+lazy val `quill-cats` =
+  (project in file("quill-cats"))
+    .settings(commonSettings: _*)
+    .settings(
+      libraryDependencies ++= Seq(
+        "org.typelevel" %% "cats-effect" % Version.catsEffect,
+        "co.fs2"        %% "fs2-core"    % Version.fs2
+      )
+    )
+    .dependsOn(`quill-core-jvm` % "compile->compile;test->test")
+    .enablePlugins(MimaPlugin)
+
 lazy val `quill-jdbc-zio` =
   (project in file("quill-jdbc-zio"))
     .settings(commonSettings: _*)
@@ -581,6 +598,22 @@ lazy val `quill-jasync-zio` =
     .dependsOn(`quill-sql-jvm` % "compile->compile;test->test")
     .enablePlugins(MimaPlugin)
 
+lazy val `quill-jasync-cats` =
+  (project in file("quill-jasync-cats"))
+    .settings(commonSettings: _*)
+    .settings(
+      Test / fork := true,
+      libraryDependencies ++= Seq(
+        "com.github.jasync-sql"   % "jasync-common"      % "2.1.24",
+        "org.scala-lang.modules" %% "scala-java8-compat" % "0.9.1",
+        "org.typelevel"          %% "cats-effect"        % Version.catsEffect,
+        "co.fs2"                 %% "fs2-core"           % Version.fs2
+      )
+    )
+    .dependsOn(`quill-cats` % "compile->compile;test->test")
+    .dependsOn(`quill-jasync` % "compile->compile;test->test")
+    .enablePlugins(MimaPlugin)
+
 lazy val `quill-jasync-zio-postgres` =
   (project in file("quill-jasync-zio-postgres"))
     .settings(commonSettings: _*)
@@ -591,6 +624,18 @@ lazy val `quill-jasync-zio-postgres` =
       )
     )
     .dependsOn(`quill-jasync-zio` % "compile->compile;test->test")
+    .enablePlugins(MimaPlugin)
+
+lazy val `quill-jasync-cats-postgres` =
+  (project in file("quill-jasync-cats-postgres"))
+    .settings(commonSettings: _*)
+    .settings(
+      Test / fork := true,
+      libraryDependencies ++= Seq(
+        "com.github.jasync-sql"  %% "jasync-postgresql"  % "2.1.24"
+      )
+    )
+    .dependsOn(`quill-jasync-cats` % "compile->compile;test->test")
     .enablePlugins(MimaPlugin)
 
 lazy val `quill-cassandra` =
