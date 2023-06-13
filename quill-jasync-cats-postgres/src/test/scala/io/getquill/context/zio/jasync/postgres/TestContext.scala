@@ -1,22 +1,23 @@
-package io.getquill.context.zio.jasync.postgres
+package io.getquill.context.cats.jasync.postgres
 
 import com.github.jasync.sql.db.postgresql.PostgreSQLConnection
 import io.getquill.context.sql.{TestDecoders, TestEncoders}
-import io.getquill.context.zio.{
+import io.getquill.context.cats.{
   JAsyncContextConfig,
-  PostgresZioJAsyncContext,
+  PostgresCatsJAsyncContext,
   PostgresJAsyncContextConfig,
-  ZioJAsyncConnection
+  CatsJAsyncConnection
 }
 import io.getquill.util.LoadConfig
 import io.getquill.{Literal, PostgresDialect, TestEntities}
-import zio._
+import cats._
 
-class TestContext extends PostgresZioJAsyncContext(Literal) with TestEntities with TestEncoders with TestDecoders {
+class TestContext
+    extends PostgresCatsJAsyncContext(Literal, "testPostgresDB")
+    with TestEntities
+    with TestEncoders
+    with TestDecoders {
 
   val config: JAsyncContextConfig[PostgreSQLConnection] = PostgresJAsyncContextConfig(LoadConfig("testPostgresDB"))
-
-  val layer: TaskLayer[ZioJAsyncConnection] =
-    ZLayer.succeed(config) >>> ZioJAsyncConnection.live[PostgreSQLConnection]
 
 }

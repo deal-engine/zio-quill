@@ -1,8 +1,8 @@
-package io.getquill.context.zio.jasync.postgres
+package io.getquill.context.cats.jasync.postgres
 
 import io.getquill.context.sql.base.OnConflictSpec
 
-class OnConflictAsyncSpec extends OnConflictSpec with ZioSpec {
+class OnConflictAsyncSpec extends OnConflictSpec with CatsSpec {
 
   import context._
 

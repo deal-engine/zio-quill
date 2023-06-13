@@ -1,13 +1,13 @@
-package io.getquill.context.zio.jasync.postgres
+package io.getquill.context.cats.jasync.postgres
 
 import com.github.jasync.sql.db.{QueryResult, ResultSetKt}
 import io.getquill.ReturnAction.ReturnColumns
 import io.getquill.base.Spec
-import io.getquill.context.zio.PostgresZioJAsyncContext
+import io.getquill.context.cats.PostgresCatsJAsyncContext
 
 import io.getquill.{Literal, ReturnAction}
 
-class PostgresJAsyncContextSpec extends Spec with ZioSpec {
+class PostgresJAsyncContextSpec extends Spec with CatsSpec {
 
   import context._
 
@@ -41,7 +41,7 @@ class PostgresJAsyncContextSpec extends Spec with ZioSpec {
   }
 
   "cannot extract" in {
-    object ctx extends PostgresZioJAsyncContext(Literal) {
+    object ctx extends PostgresCatsJAsyncContext(Literal, "testPostgresDB") {
       override def handleSingleResult[T](sql: String, list: List[T]) = super.handleSingleResult(sql, list)
 
       override def extractActionResult[O](

@@ -1,4 +1,4 @@
-package io.getquill.context.zio.jasync.postgres
+package io.getquill.context.cats.jasync.postgres
 
 import io.getquill.context.sql.base.QueryResultTypeSpec
 
@@ -6,7 +6,7 @@ import java.util.concurrent.ConcurrentLinkedQueue
 import scala.jdk.CollectionConverters._
 import scala.math.BigDecimal.int2bigDecimal
 
-class QueryResultTypePostgresAsyncSpec extends QueryResultTypeSpec with ZioSpec {
+class QueryResultTypePostgresAsyncSpec extends QueryResultTypeSpec with CatsSpec {
 
   import context._
 

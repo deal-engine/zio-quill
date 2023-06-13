@@ -1,8 +1,8 @@
-package io.getquill.context.zio.jasync.postgres
+package io.getquill.context.cats.jasync.postgres
 
 import io.getquill.context.sql.base.ArrayOpsSpec
 
-class ArrayOpsAsyncSpec extends ArrayOpsSpec with ZioSpec {
+class ArrayOpsAsyncSpec extends ArrayOpsSpec with CatsSpec {
   import context._
 
   "contains" in {

@@ -9,6 +9,7 @@ import java.lang.{Long => JavaLong}
 import java.nio.charset.Charset
 import scala.jdk.CollectionConverters._
 import scala.util.Try
+import com.github.jasync.sql.db.pool.ConnectionPool
 
 abstract class JAsyncContextConfig[C <: ConcreteConnection](
   config: Config,
@@ -64,4 +65,10 @@ abstract class JAsyncContextConfig[C <: ConcreteConnection](
     getLong("maxConnectionTtl").map(JavaLong.valueOf).orElse(Option(default.getMaxConnectionTtl)).orNull,
     getString("currentSchema").orElse(Option(urlConfiguration.getCurrentSchema)).orNull
   )
+
+  def pool =
+    new ConnectionPool[C](
+      connectionFactory(connectionPoolConfiguration.getConnectionConfiguration),
+      connectionPoolConfiguration
+    )
 }

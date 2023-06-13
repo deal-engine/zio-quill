@@ -9,12 +9,18 @@ import io.getquill.{NamingStrategy, PostgresDialect, ReturnAction}
 
 import scala.jdk.CollectionConverters._
 import com.github.jasync.sql.db.pool.ConnectionPool
+import com.typesafe.config.Config
+import io.getquill.util.LoadConfig
 
 class PostgresCatsJAsyncContext[+N <: NamingStrategy](naming: N, pool: ConnectionPool[PostgreSQLConnection])
     extends CatsJAsyncContext[PostgresDialect, N, PostgreSQLConnection](PostgresDialect, naming, pool)
     with ArrayEncoders
     with ArrayDecoders
     with UUIDObjectEncoding {
+
+  def this(naming: N, config: PostgresJAsyncContextConfig) = this(naming, config.pool)
+  def this(naming: N, config: Config) = this(naming, PostgresJAsyncContextConfig(config))
+  def this(naming: N, configPrefix: String) = this(naming, LoadConfig(configPrefix))
 
   override protected def extractActionResult[O](returningAction: ReturnAction, returningExtractor: Extractor[O])(
     result: DBQueryResult

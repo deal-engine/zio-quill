@@ -5,7 +5,7 @@ import com.github.jasync.sql.db.SSLConfiguration
 import com.github.jasync.sql.db.SSLConfiguration.Mode
 import com.typesafe.config.{ConfigFactory, ConfigValueFactory}
 import io.getquill.base.Spec
-import io.getquill.context.zio.PostgresJAsyncContextConfig
+import io.getquill.context.cats.PostgresJAsyncContextConfig
 
 class PostgresJAsyncContextConfigSpec extends Spec {
   "parses ssl config" in {

@@ -1,14 +1,14 @@
-package io.getquill.context.zio.jasync.postgres
+package io.getquill.context.cats.jasync.postgres
 
 import io.getquill.context.sql.base.DepartmentsSpec
 
-class DepartmentsPostgresAsyncSpec extends DepartmentsSpec with ZioSpec {
+class DepartmentsPostgresAsyncSpec extends DepartmentsSpec with CatsSpec {
 
   import context._
 
   override def beforeAll =
     runSyncUnsafe {
-      context.transaction {
+      context.transaction { implicit ec =>
         for {
           _ <- context.run(query[Department].delete)
           _ <- context.run(query[Employee].delete)

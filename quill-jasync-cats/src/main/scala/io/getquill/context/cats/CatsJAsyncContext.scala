@@ -45,6 +45,7 @@ abstract class CatsJAsyncContext[D <: SqlIdiom, +N <: NamingStrategy, C <: Concr
   override type RunBatchActionReturningResult[T] = Seq[T]
   override type DecoderSqlType                   = SqlTypes.SqlTypes
   type DatasourceContext                         = Unit
+  type Runner                                    = Unit
 
   override type NullChecker = CatsJasyncNullChecker
   class CatsJasyncNullChecker extends BaseNullChecker {

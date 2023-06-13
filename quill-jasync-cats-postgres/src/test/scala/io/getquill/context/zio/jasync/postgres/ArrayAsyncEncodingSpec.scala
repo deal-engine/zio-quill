@@ -1,12 +1,12 @@
-package io.getquill.context.zio.jasync.postgres
+package io.getquill.context.cats.jasync.postgres
 
 import java.time.{LocalDate, LocalDateTime}
 import java.util.{Date, UUID}
 import io.getquill.context.sql.EncodingTestType
 import io.getquill.context.sql.encoding.ArrayEncodingBaseSpec
-import zio.FiberFailure
+import cats.effect.unsafe.implicits.global
 
-class ArrayAsyncEncodingSpec extends ArrayEncodingBaseSpec with ZioSpec {
+class ArrayAsyncEncodingSpec extends ArrayEncodingBaseSpec with CatsSpec {
   import context._
 
   val q = quote(query[ArraysTestEntity])

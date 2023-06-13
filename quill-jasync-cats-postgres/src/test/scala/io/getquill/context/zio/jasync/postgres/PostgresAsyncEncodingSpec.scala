@@ -1,4 +1,4 @@
-package io.getquill.context.zio.jasync.postgres
+package io.getquill.context.cats.jasync.postgres
 
 import java.time.{LocalDate, LocalDateTime, ZonedDateTime}
 import io.getquill.context.sql.EncodingSpec
@@ -6,9 +6,8 @@ import io.getquill.context.sql.EncodingSpec
 import java.util.Date
 import java.util.UUID
 import io.getquill.Query
-import zio.FiberFailure
 
-class PostgresAsyncEncodingSpec extends EncodingSpec with ZioSpec {
+class PostgresAsyncEncodingSpec extends EncodingSpec with CatsSpec {
 
   import context._
 

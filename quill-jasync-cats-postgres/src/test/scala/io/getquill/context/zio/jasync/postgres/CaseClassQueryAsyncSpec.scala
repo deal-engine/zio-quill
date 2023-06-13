@@ -1,15 +1,15 @@
-package io.getquill.context.zio.jasync.postgres
+package io.getquill.context.cats.jasync.postgres
 
 import io.getquill.context.sql.base.CaseClassQuerySpec
 import org.scalatest.matchers.should.Matchers._
 
-class CaseClassQueryAsyncSpec extends CaseClassQuerySpec with ZioSpec {
+class CaseClassQueryAsyncSpec extends CaseClassQuerySpec with CatsSpec {
 
   import context._
 
   override def beforeAll =
     runSyncUnsafe {
-      context.transaction {
+      context.transaction { implicit ec =>
         for {
           _ <- context.run(query[Contact].delete)
           _ <- context.run(query[Address].delete)
