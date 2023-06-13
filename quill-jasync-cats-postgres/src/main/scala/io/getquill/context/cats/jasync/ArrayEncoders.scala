@@ -1,13 +1,13 @@
-package io.getquill.context.zio.jasync
+package io.getquill.context.cats.jasync
 
 import java.sql.Timestamp
 import java.time.{LocalDate, LocalDateTime, OffsetDateTime}
 import java.util.Date
 import io.getquill.context.sql.encoding.ArrayEncoding
-import io.getquill.context.zio.{PostgresZioJAsyncContext, SqlTypes}
+import io.getquill.context.cats.{PostgresCatsJAsyncContext, SqlTypes}
 
 trait ArrayEncoders extends ArrayEncoding {
-  self: PostgresZioJAsyncContext[_] =>
+  self: PostgresCatsJAsyncContext[_] =>
 
   implicit def arrayStringEncoder[Col <: Seq[String]]: Encoder[Col]         = arrayRawEncoder[String, Col]
   implicit def arrayBigDecimalEncoder[Col <: Seq[BigDecimal]]: Encoder[Col] = arrayRawEncoder[BigDecimal, Col]

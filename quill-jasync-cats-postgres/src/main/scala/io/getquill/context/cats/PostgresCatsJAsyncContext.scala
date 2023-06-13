@@ -1,16 +1,17 @@
-package io.getquill.context.zio
+package io.getquill.context.cats
 
 import com.github.jasync.sql.db.postgresql.PostgreSQLConnection
 import com.github.jasync.sql.db.{QueryResult => DBQueryResult}
 import io.getquill.ReturnAction.{ReturnColumns, ReturnNothing, ReturnRecord}
-import io.getquill.context.zio.jasync.{ArrayDecoders, ArrayEncoders}
+import io.getquill.context.cats.jasync.{ArrayDecoders, ArrayEncoders}
 import io.getquill.util.Messages.fail
 import io.getquill.{NamingStrategy, PostgresDialect, ReturnAction}
 
 import scala.jdk.CollectionConverters._
+import com.github.jasync.sql.db.pool.ConnectionPool
 
-class PostgresZioJAsyncContext[+N <: NamingStrategy](naming: N)
-    extends ZioJAsyncContext[PostgresDialect, N, PostgreSQLConnection](PostgresDialect, naming)
+class PostgresCatsJAsyncContext[+N <: NamingStrategy](naming: N, pool: ConnectionPool[PostgreSQLConnection])
+    extends CatsJAsyncContext[PostgresDialect, N, PostgreSQLConnection](PostgresDialect, naming, pool)
     with ArrayEncoders
     with ArrayDecoders
     with UUIDObjectEncoding {

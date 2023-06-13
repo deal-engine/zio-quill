@@ -1,7 +1,7 @@
-package io.getquill.context.zio.jasync
+package io.getquill.context.cats.jasync
 
 import io.getquill.context.sql.encoding.ArrayEncoding
-import io.getquill.context.zio.{PostgresZioJAsyncContext, SqlTypes}
+import io.getquill.context.cats.{PostgresCatsJAsyncContext, SqlTypes}
 import io.getquill.util.Messages.fail
 
 import java.time.{LocalDate, LocalDateTime, ZoneId}
@@ -12,7 +12,7 @@ import scala.jdk.CollectionConverters._
 import scala.reflect.ClassTag
 
 trait ArrayDecoders extends ArrayEncoding {
-  self: PostgresZioJAsyncContext[_] =>
+  self: PostgresCatsJAsyncContext[_] =>
 
   implicit def arrayStringDecoder[Col <: Seq[String]](implicit bf: CBF[String, Col]): Decoder[Col] =
     arrayRawDecoder[String, Col]

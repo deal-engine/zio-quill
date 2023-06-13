@@ -1,4 +1,4 @@
-package io.getquill.context.zio
+package io.getquill.context.cats
 
 import com.github.jasync.sql.db.postgresql.PostgreSQLConnection
 import com.github.jasync.sql.db.postgresql.pool.PostgreSQLConnectionFactory
