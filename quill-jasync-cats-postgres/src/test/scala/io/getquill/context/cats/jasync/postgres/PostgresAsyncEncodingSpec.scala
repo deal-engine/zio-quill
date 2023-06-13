@@ -13,14 +13,14 @@ class PostgresAsyncEncodingSpec extends EncodingSpec with CatsSpec {
   import context._
 
   "encodes and decodes types" in {
-    def r(implicit ec: ExecutionContext) =
+    val r =
       for {
         _      <- context.run(delete)
         _      <- context.run(liftQuery(insertValues).foreach(e => insert(e)))
         result <- context.run(query[EncodingTestEntity])
       } yield result
 
-    verify(runSyncUnsafe(implicit ec => r))
+    verify(runSyncUnsafe(r))
   }
 
   "encodes and decodes uuids" in {
@@ -29,34 +29,34 @@ class PostgresAsyncEncodingSpec extends EncodingSpec with CatsSpec {
 
     // delete old values
     val q0   = quote(query[EncodingUUIDTestEntity].delete)
-    val rez0 = runSyncUnsafe(implicit ec => testContext.run(q0))
+    val rez0 = runSyncUnsafe(testContext.run(q0))
 
     // insert new uuid
     val rez1 =
-      runSyncUnsafe(implicit ec =>
+      runSyncUnsafe(
         testContext.run(query[EncodingUUIDTestEntity].insertValue(lift(EncodingUUIDTestEntity(testUUID))))
       )
 
     // verify you can get the uuid back from the db
-    def q2(implicit ec: ExecutionContext) = quote(query[EncodingUUIDTestEntity].map(p => p.v1))
-    val rez2                              = runSyncUnsafe(implicit ec => testContext.run(q2))
+    val q2   = quote(query[EncodingUUIDTestEntity].map(p => p.v1))
+    val rez2 = runSyncUnsafe(testContext.run(q2))
 
     rez2 mustEqual List(testUUID)
   }
 
   "fails if the column has the wrong type" - {
     "numeric" in {
-      runSyncUnsafe(implicit ec => testContext.run(liftQuery(insertValues).foreach(e => insert(e))))
+      runSyncUnsafe(testContext.run(liftQuery(insertValues).foreach(e => insert(e))))
       case class EncodingTestEntity(v1: Int)
       val e = intercept[IllegalStateException] {
-        runSyncUnsafe(implicit ec => testContext.run(query[EncodingTestEntity]))
+        runSyncUnsafe(testContext.run(query[EncodingTestEntity]))
       }
     }
     "non-numeric" in {
-      runSyncUnsafe(implicit ec => testContext.run(liftQuery(insertValues).foreach(e => insert(e))))
+      runSyncUnsafe(testContext.run(liftQuery(insertValues).foreach(e => insert(e))))
       case class EncodingTestEntity(v1: Date)
       val e = intercept[IllegalStateException] {
-        runSyncUnsafe(implicit ec => testContext.run(query[EncodingTestEntity]))
+        runSyncUnsafe(testContext.run(query[EncodingTestEntity]))
       }
     }
   }
@@ -65,19 +65,19 @@ class PostgresAsyncEncodingSpec extends EncodingSpec with CatsSpec {
     val q = quote { (set: Query[Int]) =>
       query[EncodingTestEntity].filter(t => set.contains(t.v6))
     }
-    def fut(implicit ec: ExecutionContext) =
+    val fut =
       for {
         _ <- testContext.run(query[EncodingTestEntity].delete)
         _ <- testContext.run(liftQuery(insertValues).foreach(e => query[EncodingTestEntity].insertValue(e)))
         r <- testContext.run(q(liftQuery(insertValues.map(_.v6))))
       } yield r
-    verify(runSyncUnsafe(implicit ec => fut))
+    verify(runSyncUnsafe(fut))
   }
 
   "returning UUID" in {
     val success = for {
-      uuid    <- runSyncUnsafe(implicit ec => testContext.run(insertBarCode(lift(barCodeEntry))))
-      barCode <- runSyncUnsafe(implicit ec => testContext.run(findBarCodeByUuid(uuid))).headOption
+      uuid    <- runSyncUnsafe(testContext.run(insertBarCode(lift(barCodeEntry))))
+      barCode <- runSyncUnsafe(testContext.run(findBarCodeByUuid(uuid))).headOption
     } yield {
       verifyBarcode(barCode)
     }
@@ -87,17 +87,17 @@ class PostgresAsyncEncodingSpec extends EncodingSpec with CatsSpec {
   "decodes LocalDate and LocalDateTime types" in {
     case class DateEncodingTestEntity(v1: LocalDate, v2: LocalDateTime)
     val entity = DateEncodingTestEntity(LocalDate.now, LocalDateTime.now)
-    def r(implicit ec: ExecutionContext) = for {
+    val r = for {
       _      <- testContext.run(query[DateEncodingTestEntity].delete)
       _      <- testContext.run(query[DateEncodingTestEntity].insertValue(lift(entity)))
       result <- testContext.run(query[DateEncodingTestEntity])
     } yield result
-    runSyncUnsafe(implicit ec => r) mustBe Seq(entity)
+    runSyncUnsafe(r) mustBe Seq(entity)
   }
 
   "encodes custom type inside singleton object" in {
     object Singleton {
-      def apply()(implicit c: TestContext, ec: ExecutionContext) = {
+      def apply()(implicit c: TestContext) = {
         import c._
         for {
           _      <- c.run(query[EncodingTestEntity].delete)
@@ -107,6 +107,6 @@ class PostgresAsyncEncodingSpec extends EncodingSpec with CatsSpec {
     }
 
     implicit val c = testContext
-    runSyncUnsafe(implicit ec => Singleton())
+    runSyncUnsafe(Singleton())
   }
 }

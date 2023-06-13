@@ -7,7 +7,7 @@ class PeopleAsyncReturningSpec extends PeopleReturningSpec with CatsSpec {
   import context._
 
   override def beforeEach(): Unit = {
-    runSyncUnsafe { implicit ec =>
+    runSyncUnsafe {
       testContext.transaction { implicit ec =>
         for {
           _ <- testContext.run(query[Contact].delete)
@@ -21,7 +21,7 @@ class PeopleAsyncReturningSpec extends PeopleReturningSpec with CatsSpec {
 
   "Ex 0 insert.returning(_.generatedColumn) mod" in {
     import `Ex 0 insert.returning(_.generatedColumn) mod`._
-    runSyncUnsafe(implicit ec =>
+    runSyncUnsafe(
       for {
         id     <- testContext.run(op)
         output <- testContext.run(get)
@@ -31,7 +31,7 @@ class PeopleAsyncReturningSpec extends PeopleReturningSpec with CatsSpec {
 
   "Ex 0.5 insert.returning(wholeRecord) mod" in {
     import `Ex 0.5 insert.returning(wholeRecord) mod`._
-    runSyncUnsafe(implicit ec =>
+    runSyncUnsafe(
       for {
         product <- testContext.run(op)
         output  <- testContext.run(get)
@@ -41,7 +41,7 @@ class PeopleAsyncReturningSpec extends PeopleReturningSpec with CatsSpec {
 
   "Ex 1 insert.returningMany(_.generatedColumn) mod" in {
     import `Ex 1 insert.returningMany(_.generatedColumn) mod`._
-    runSyncUnsafe(implicit ec =>
+    runSyncUnsafe(
       for {
         id     <- testContext.run(op)
         output <- testContext.run(get)
@@ -51,7 +51,7 @@ class PeopleAsyncReturningSpec extends PeopleReturningSpec with CatsSpec {
 
   "Ex 2 update.returningMany(_.singleColumn) mod" in {
     import `Ex 2 update.returningMany(_.singleColumn) mod`._
-    runSyncUnsafe(implicit ec =>
+    runSyncUnsafe(
       for {
         opResult <- testContext.run(op)
         _         = opResult.toSet mustEqual expect.toSet
@@ -62,7 +62,7 @@ class PeopleAsyncReturningSpec extends PeopleReturningSpec with CatsSpec {
 
   "Ex 3 delete.returningMany(wholeRecord)" in {
     import `Ex 3 delete.returningMany(wholeRecord)`._
-    runSyncUnsafe(implicit ec =>
+    runSyncUnsafe(
       for {
         opResult <- testContext.run(op)
         _         = opResult.toSet mustEqual expect.toSet
@@ -73,7 +73,7 @@ class PeopleAsyncReturningSpec extends PeopleReturningSpec with CatsSpec {
 
   "Ex 4 update.returningMany(query)" in {
     import `Ex 4 update.returningMany(query)`._
-    runSyncUnsafe(implicit ec =>
+    runSyncUnsafe(
       for {
         opResult <- testContext.run(op)
         _         = opResult.toSet mustEqual expect.toSet

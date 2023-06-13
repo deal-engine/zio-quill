@@ -33,7 +33,7 @@ trait CatsIOMonad extends IOMonad {
   case class Run[T, E <: Effect](f: () => Result[T]) extends IO[T, E]
 
   def performIO[T](io: IO[T, _], transactional: Boolean = false)(implicit
-    ec: ExecutionContext
+    ec: CatsIO[ExecutionContext] = CatsIO.executionContext
   ): Result[T] =
     io match {
       case FromTry(v) => CatsIO.fromTry(v)
